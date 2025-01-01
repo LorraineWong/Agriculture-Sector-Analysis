@@ -82,6 +82,7 @@ Ensure the following R packages are installed:
 ## References
 - Dataset: [PPI Data CSV](https://storage.dosm.gov.my/ppi/ppi.csv)
 - CRISP-DM Framework: [CRISP-DM Overview](https://www.crisp-dm.org/)
+- R-Pubs: [Agriculture-Sector-Analysis](http://rpubs.com/Lorraine06/Agriculture-Sector-Analysis)
 
 ---
 
