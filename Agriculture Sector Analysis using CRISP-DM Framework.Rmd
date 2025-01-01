@@ -1,0 +1,359 @@
+---
+title: "Agriculture Sector Analysis using CRISP-DM Framework"
+author: "Wong Yi Ting (S2152880)"
+date: "`r Sys.Date()`"
+output:
+  html_document: default
+  pdf_document: default
+---
+
+# **The Role of Data Science in Agriculture Sector**
+
+## **Introduction**
+Data science enables better understanding and management of agricultural price volatility by analyzing trends, predicting fluctuations, and providing actionable insights. This study specifically focuses on leveraging predictive models to assist policymakers and farmers in making informed decisions to optimize production strategies and mitigate risks.
+
+---
+
+## **CRISP-DM Framework Analysis**
+
+### **1. Business Understanding**
+Volatile agricultural prices directly impact farmers' income and decision-making processes. This study aims to:<br>
+&emsp;**1.** Predict future agriculture PPI values using time series models.<br>
+&emsp;**2.** Use other industries' PPI data to predict agriculture PPI using regression models.<br>
+
+These objectives address critical industry needs, such as stabilizing market conditions and improving income predictability for stakeholders.
+
+### **2. Data Understanding**
+- **Dataset Source**: Department of Statistics Malaysia
+- **Fields**: 
+  - **`date`**: Monthly timestamps
+  - **`agriculture`**: Agriculture PPI
+  - **`mining`**: Mining PPI
+  - **`manufacturing`**: Manufacturing PPI
+  - **`electricity`**: Electricity & Gas Supply PPI
+  - **`water`**: Water Supply PPI
+
+```{r data-summary, message=FALSE, warning=FALSE}
+library(dplyr)
+library(ggplot2)
+
+# Load dataset
+data <- read.csv("ppi.csv")
+
+# Summary of the dataset
+summary(data)
+
+# Check for missing values
+cat("Missing values in dataset:", sum(is.na(data)), "\n")
+
+# Ensure agriculture data is numeric and handle missing values
+data$agriculture <- as.numeric(as.character(data$agriculture))
+data <- data %>% filter(!is.na(agriculture))
+cat("Total rows after cleaning:", nrow(data), "\n")
+```
+
+#### **Data Visualizations**
+
+```{r data-visualizations, message=FALSE, warning=FALSE}
+# Plot Agriculture PPI over time
+ggplot(data, aes(x = as.Date(date), y = agriculture)) +
+  geom_line(color = "blue") +
+  ggtitle("Agriculture PPI Over Time from 2010 to 2024") +
+  xlab("Date") + ylab("Agriculture PPI")
+
+# Plot correlation between Agriculture PPI and Mining PPI
+ggplot(data, aes(x = mining, y = agriculture)) +
+  geom_point(color = "green") +
+  ggtitle("Correlation Between Agriculture PPI and Mining PPI") +
+  xlab("Mining PPI") + ylab("Agriculture PPI")
+
+# Plot distribution of Agriculture PPI
+ggplot(data, aes(x = agriculture)) +
+  geom_histogram(binwidth = 5, fill = "orange", color = "black") +
+  ggtitle("Distribution of Agriculture PPI") +
+  xlab("Agriculture PPI") + ylab("Frequency")
+```
+
+### **3. Data Preparation**
+Prepare the dataset for both objectives.
+
+#### **3.1 Time Series Data Preparation**
+Prepare the agriculture PPI data for time series analysis.
+
+```{r ts-preparation, message=FALSE, warning=FALSE}
+# Create a time series object for agriculture PPI
+agriculture_ts <- ts(data$agriculture, start = c(2010, 1), frequency = 12)
+```
+
+#### **3.2 Regression Data Preparation**
+Prepare the dataset to predict agriculture PPI based on other industries' PPI data.
+
+```{r regression-preparation, message=FALSE, warning=FALSE}
+# Select relevant columns for regression
+data_regression <- data %>%
+  select(agriculture, mining, manufacturing, electricity, water) %>%
+  na.omit()
+
+# Split data into training and testing sets
+set.seed(123)
+library(caret)
+trainIndex <- createDataPartition(data_regression$agriculture, p = 0.8, list = FALSE)
+trainData <- data_regression[trainIndex, ]
+testData <- data_regression[-trainIndex, ]
+```
+
+#### **3.3 Feature Selection**
+Analyze feature importance using Random Forest and select important features.
+
+```{r feature-selection, message=FALSE, warning=FALSE}
+library(randomForest)
+
+# Train Random Forest model to calculate feature importance
+rf_model_importance <- randomForest(
+  agriculture ~ ., 
+  data = trainData, 
+  ntree = 500, 
+  mtry = 2, 
+  importance = TRUE
+)
+
+# Print feature importance
+importance <- randomForest::importance(rf_model_importance)
+print(importance)
+
+# Visualize feature importance
+varImpPlot(rf_model_importance)
+
+# Select important features based on importance scores
+selected_features <- c("agriculture", "mining", "manufacturing", "electricity")
+
+# Update training and testing datasets with selected features
+trainData_selected <- trainData[, selected_features]
+testData_selected <- testData[, selected_features]
+```
+
+### **4. Modeling**
+
+#### **4.1 Time Series Modeling: Multi-Model**
+Encapsulate ARIMA and ETS models into reusable functions.
+
+```{r ts-function, message=FALSE, warning=FALSE}
+library(forecast)
+
+# Function to train ARIMA model
+ARIMA_Model <- function(ts_data) {
+  model <- auto.arima(ts_data)
+  forecast_data <- forecast(model, h = 12)
+  rmse <- sqrt(mean((ts_data - fitted(model))^2))
+  return(list(model = model, forecast = forecast_data, RMSE = rmse))
+}
+
+# Function to train ETS model
+ETS_Model <- function(ts_data) {
+  model <- ets(ts_data)
+  forecast_data <- forecast(model, h = 12)
+  rmse <- sqrt(mean((ts_data - fitted(model))^2))
+  return(list(model = model, forecast = forecast_data, RMSE = rmse))
+}
+
+# Apply ARIMA and ETS models to the time series
+arima_results <- ARIMA_Model(agriculture_ts)
+ets_results <- ETS_Model(agriculture_ts)
+
+cat("ARIMA RMSE:", arima_results$RMSE, "\n")
+cat("ETS RMSE:", ets_results$RMSE, "\n")
+```
+
+#### **4.2 Regression Modeling: Multi-Model**
+Encapsulate Linear Regression, Random Forest, and XGBoost into reusable functions.
+
+```{r regression-functions, message=FALSE, warning=FALSE}
+library(randomForest)
+library(caret)
+library(xgboost)
+library(class)
+
+# Function to train Linear Regression model
+Linear_Regression <- function(train_data, test_data) {
+  model <- lm(agriculture ~ ., data = train_data)
+  predictions <- predict(model, test_data)
+  rmse <- sqrt(mean((test_data$agriculture - predictions)^2))
+  return(list(model = model, predictions = predictions, RMSE = rmse))
+}
+
+# Function to train Random Forest model
+RF_Model <- function(train_data, test_data, ntree = 2000, mtry = NULL, nodesize = 5) {
+  if (is.null(mtry)) {
+    mtry <- floor(sqrt(ncol(train_data) - 1))
+  }
+  model <- randomForest(
+    agriculture ~ ., 
+    data = train_data, 
+    ntree = ntree, 
+    mtry = mtry, 
+    nodesize = nodesize
+  )
+  predictions <- predict(model, test_data)
+  rmse <- sqrt(mean((test_data$agriculture - predictions)^2))
+  return(list(model = model, predictions = predictions, RMSE = rmse))
+}
+
+# Function to train XGBoost model
+XGBoost_Model <- function(train_data, test_data, nrounds = 1000, max_depth = 6, eta = 0.3) {
+  # Prepare data for XGBoost
+  dtrain <- xgb.DMatrix(data = as.matrix(train_data[, -1]), label = train_data$agriculture)
+  dtest <- xgb.DMatrix(data = as.matrix(test_data[, -1]), label = test_data$agriculture)
+
+  # Set XGBoost parameters
+  params <- list(
+    objective = "reg:squarederror",
+    max_depth = max_depth,
+    eta = eta
+  )
+
+  # Train the XGBoost model
+  model <- xgb.train(params = params, data = dtrain, nrounds = nrounds)
+
+  # Predict and calculate RMSE
+  predictions <- predict(model, dtest)
+  rmse <- sqrt(mean((test_data$agriculture - predictions)^2))
+
+  return(list(model = model, predictions = predictions, RMSE = rmse))
+}
+# Function to train KNN Regression model
+
+KNN_Model <- function(data_train, data_test, k = 5) {
+  model <- train(agriculture ~ ., data = data_train, method = "knn", tuneGrid = expand.grid(k = k))
+  x_test <- data_test[, -1]
+  y_test <- data_test$agriculture
+  predictions <- predict(model, x_test)
+  rmse <- sqrt(mean((y_test - predictions)^2))
+  return(list(model = model, RMSE = rmse))
+}
+
+# Apply Linear Regression, Random Forest, and XGBoost models
+linear_results <- Linear_Regression(trainData_selected, testData_selected)
+rf_results <- RF_Model(trainData_selected, testData_selected)
+xgboost_results <- XGBoost_Model(trainData_selected, testData_selected, nrounds = 1000, max_depth = 6, eta = 0.1)
+knn_results <- KNN_Model(trainData_selected, testData_selected, k = 5)
+
+cat("Linear Regression RMSE:", linear_results$RMSE, "\n")
+cat("Random Forest RMSE:", rf_results$RMSE, "\n")
+cat("XGBoost RMSE:", xgboost_results$RMSE, "\n")
+cat("KNN RMSE:", knn_results$RMSE, "\n")
+```
+
+### **5. Evaluation**
+
+#### **5.1 Time Series Model Selection**
+Evaluate and display results for each time series model, then select the best model.
+
+```{r evaluation-timeseries, message=FALSE, warning=FALSE}
+if (arima_results$RMSE < ets_results$RMSE) {
+  best_ts_model <- "ARIMA"
+  best_ts_forecast <- arima_results$forecast
+} else {
+  best_ts_model <- "ETS"
+  best_ts_forecast <- ets_results$forecast
+}
+
+cat("Best Time Series Model:", best_ts_model, "\n")
+```
+
+#### **5.2 Regression Model Selection**
+Evaluate and display results for each regression model, then select the best model.
+
+```{r evaluation-regression, message=FALSE, warning=FALSE}
+### Regression Model Selection
+if (linear_results$RMSE < rf_results$RMSE & linear_results$RMSE < xgboost_results$RMSE & linear_results$RMSE < knn_results$RMSE) {
+  best_reg_model <- "Linear Regression"
+  best_reg_predictions <- linear_results$predictions
+} else if (rf_results$RMSE < xgboost_results$RMSE & rf_results$RMSE < knn_results$RMSE) {
+  best_reg_model <- "Random Forest"
+  best_reg_predictions <- rf_results$predictions
+} else if (xgboost_results$RMSE < knn_results$RMSE) {
+  best_reg_model <- "XGBoost"
+  best_reg_predictions <- xgboost_results$predictions
+} else {
+  best_reg_model <- "KNN"
+  best_reg_predictions <- knn_results$predictions
+}
+
+cat("Best Regression Model:", best_reg_model, "\n")
+```
+
+### **6. Deployment**
+Visualize the insights through trend graphs, regression results, and innovative predictions.
+
+#### **6.1 Dynamic Forecast Visualization**
+
+```{r dynamic-forecast, message=FALSE, warning=FALSE}
+library(forecast)
+library(ggplot2)
+
+# Fit the ARIMA model to the historical data
+arima_model <- auto.arima(agriculture_ts)
+
+# Forecast for the next 5 years (60 months ahead)
+forecast_result <- forecast(arima_model, h = 12)
+
+# Visualize the forecast
+autoplot(forecast_result) + 
+  ggtitle("Dynamic Forecast of Agriculture PPI for 2025 Using ARIMA") + 
+  xlab("Year") + ylab("Agriculture PPI")
+```
+
+#### **6.2 Sensitivity Analysis**
+```{r sensitivity-analysis, message=FALSE, warning=FALSE}
+# Conduct sensitivity analysis by increasing Mining PPI by 10%
+sensitivity_test <- testData_selected
+sensitivity_test$mining <- sensitivity_test$mining * 1.1
+sensitivity_predictions <- predict(rf_results$model, sensitivity_test)
+
+cat("Impact of 10% increase in Mining PPI on Agriculture PPI predictions:\n")
+
+ggplot(data.frame(Actual = testData_selected$agriculture, Predicted = sensitivity_predictions),
+       aes(x = Actual, y = Predicted)) +
+  geom_point() +
+  geom_abline(intercept = 0, slope = 1, color = "red") +
+  ggtitle("Sensitivity Analysis: Mining PPI Increased by 10%") +
+  xlab("Actual Agriculture PPI") + ylab("Predicted Agriculture PPI")
+```
+
+#### **6.3 Uncertainty Analysis with Confidence Intervals**
+```{r uncertainty-analysis, message=FALSE, warning=FALSE}
+# Visualize prediction with confidence intervals
+if (exists("best_ts_forecast")) {
+  autoplot(best_ts_forecast, include = 80) +
+    ggtitle("Prediction with Confidence Intervals") +
+    xlab("Year") + ylab("Agriculture PPI")
+}
+```
+
+#### **6.4 Alert System for Volatility**
+```{r alert-system, message=FALSE, warning=FALSE}
+# Trigger alerts for price volatility exceeding a threshold
+threshold <- 120
+if (any(best_ts_forecast$mean > threshold)) {
+  cat("Alert: Projected PPI exceeds threshold! Consider policy interventions.\n")
+} else {
+  cat("No significant price volatility detected.\n")
+}
+```
+
+---
+
+## **Conclusion**
+By applying the CRISP-DM framework:<br>
+&emsp;- Evaluated ARIMA and ETS models for time series forecasting and selected the best-performing model.<br>
+&emsp;- Evaluated Linear Regression, Random Forest, XGBoost models and K-Nearest Neighbors for predicting agriculture PPI and selected the best-performing model.<br>
+&emsp;- Conducted sensitivity and uncertainty analyses to provide deeper insights into agricultural price trends.<br>
+&emsp;- Developed an alert system to flag significant price volatility, aiding decision-makers.
+
+These models and analyses offer actionable insights for stabilizing agricultural markets, optimizing production, and supporting policy formulation.
+
+---
+
+## **References**
+- Dataset: [PPI Data CSV](https://storage.dosm.gov.my/ppi/ppi.csv)
+- Packages: `dplyr`, `ggplot2`, `caret`, `forecast`, `randomForest`, `xgboost`, `class`
