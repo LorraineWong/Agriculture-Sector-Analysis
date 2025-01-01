@@ -46,7 +46,6 @@ Ensure the following R packages are installed:
 - `randomForest`
 - `xgboost`
 - `class`
-- `xgb.DMatrix`
 
 ### **Setup Instructions**
 1. Clone this repository:
