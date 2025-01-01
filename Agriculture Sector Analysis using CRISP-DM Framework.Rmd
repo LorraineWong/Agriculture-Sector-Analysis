@@ -36,6 +36,7 @@ These objectives address critical industry needs, such as stabilizing market con
 ```{r data-summary, message=FALSE, warning=FALSE}
 library(dplyr)
 library(ggplot2)
+library(reshape2)
 
 # Load dataset
 data <- read.csv("ppi.csv")
@@ -57,21 +58,54 @@ cat("Total rows after cleaning:", nrow(data), "\n")
 ```{r data-visualizations, message=FALSE, warning=FALSE}
 # Plot Agriculture PPI over time
 ggplot(data, aes(x = as.Date(date), y = agriculture)) +
-  geom_line(color = "blue") +
+  geom_line(color = "#2E8B57", size = 1.2) +  
   ggtitle("Agriculture PPI Over Time from 2010 to 2024") +
-  xlab("Date") + ylab("Agriculture PPI")
+  xlab("Date") +
+  ylab("Agriculture PPI") +
+  theme_minimal(base_size = 14) +            
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5), 
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_line(color = "gray80", linetype = "dashed")
+  )
 
 # Plot correlation between Agriculture PPI and Mining PPI
-ggplot(data, aes(x = mining, y = agriculture)) +
-  geom_point(color = "green") +
-  ggtitle("Correlation Between Agriculture PPI and Mining PPI") +
-  xlab("Mining PPI") + ylab("Agriculture PPI")
+correlation_matrix <- cor(
+  data[, c("agriculture", "mining", "manufacturing", "electricity", "water")], 
+  use = "complete.obs"
+)
+correlation_data <- melt(correlation_matrix)
+ggplot(correlation_data, aes(x = Var1, y = Var2, fill = value)) +
+  geom_tile(color = "white") +  # Add white borders for tiles
+  scale_fill_gradient2(
+    low = "#2b83ba", high = "#d7191c", mid = "#f7f7f7", 
+    midpoint = 0, limit = c(-1, 1), name = "Correlation"
+  ) +  # Improved color scheme
+  ggtitle("Heatmap of Correlations with Agriculture PPI") +
+  theme_minimal(base_size = 14) +
+  theme(
+    axis.text.x = element_text(angle = 45, hjust = 1, size = 12, face = "bold"),
+    axis.text.y = element_text(size = 12, face = "bold"),
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),
+    legend.title = element_text(size = 12),
+    legend.text = element_text(size = 10)
+  )
+
 
 # Plot distribution of Agriculture PPI
 ggplot(data, aes(x = agriculture)) +
-  geom_histogram(binwidth = 5, fill = "orange", color = "black") +
+  geom_histogram(binwidth = 5, fill = "#FF8C00", color = "white", alpha = 0.9) +  # Soft orange with white borders
   ggtitle("Distribution of Agriculture PPI") +
-  xlab("Agriculture PPI") + ylab("Frequency")
+  xlab("Agriculture PPI") +
+  ylab("Frequency") +
+  theme_minimal(base_size = 14) +
+  theme(
+    plot.title = element_text(face = "bold", size = 16, hjust = 0.5),  # Centered and bold title
+    axis.title = element_text(size = 14, face = "bold"),
+    axis.text = element_text(size = 12),
+    panel.grid.major = element_line(color = "gray80", linetype = "dashed")
+  )
 ```
 
 ### **3. Data Preparation**
@@ -340,6 +374,48 @@ if (any(best_ts_forecast$mean > threshold)) {
   cat("No significant price volatility detected.\n")
 }
 ```
+
+
+# Data for Time Series Models
+time_series_data <- data.frame(
+  Model = c("ARIMA", "ETS"),
+  RMSE = c(5.21153, 5.35532)
+)
+
+# Data for Regression Models
+regression_data <- data.frame(
+  Model = c("Random Forest", "XGBoost", "KNN", "Linear Regression"),
+  RMSE = c(10.91327, 12.73847, 11.15327, 12.84890)
+)
+
+# Donut Chart for Time Series Models
+ggplot(time_series_data, aes(x = 2, y = RMSE, fill = Model)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +
+  xlim(0.5, 2.5) +
+  scale_fill_manual(values = c("#1f78b4", "#33a02c")) +
+  geom_text(aes(label = paste0("RMSE: ", RMSE)), position = position_stack(vjust = 0.5), size = 5) +
+  ggtitle("Time Series Model Performance") +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
+# Donut Chart for Regression Models
+ggplot(regression_data, aes(x = 2, y = RMSE, fill = Model)) +
+  geom_bar(stat = "identity", width = 1, color = "white") +
+  coord_polar("y", start = 0) +
+  xlim(0.5, 2.5) +
+  scale_fill_manual(values = c("#6a3d9a", "#ff7f00", "#b15928", "#e31a1c")) +
+  geom_text(aes(label = paste0("RMSE: ", RMSE)), position = position_stack(vjust = 0.5), size = 5) +
+  ggtitle("Regression Model Performance") +
+  theme_void() +
+  theme(
+    plot.title = element_text(size = 16, face = "bold", hjust = 0.5),
+    legend.position = "bottom"
+  )
+
 
 ---
 
