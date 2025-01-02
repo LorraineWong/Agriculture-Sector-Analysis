@@ -84,6 +84,7 @@ Ensure the following R packages are installed:
 - Dataset: [PPI Data CSV](https://storage.dosm.gov.my/ppi/ppi.csv)
 - CRISP-DM Framework: [CRISP-DM Overview](https://www.crisp-dm.org/)
 - Shinnys: [Dynamic Prediction of Agrivulture PPI](https://qk8k0u-lorraine-wong.shinyapps.io/Agriculture_Sector_Analysis/)
+- Poster: [Infographic Poster](https://www.canva.com/design/DAGa3ti-8YM/SGL8o9AWkLplmzttfp9JgQ/view?utm_content=DAGa3ti-8YM&utm_campaign=share_your_design&utm_medium=link&utm_source=shareyourdesignpanel)
 
 ---
 
