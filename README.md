@@ -46,6 +46,7 @@ Ensure the following R packages are installed:
 - `randomForest`
 - `xgboost`
 - `class`
+- `shinny`
 
 ### **Setup Instructions**
 1. Clone this repository:
@@ -54,7 +55,7 @@ Ensure the following R packages are installed:
    ```
 2. Install required R packages:
    ```R
-   install.packages(c("dplyr", "ggplot2", "caret", "forecast", "randomForest", "xgboost", "class"))
+   install.packages(c("dplyr", "ggplot2", "caret", "forecast", "randomForest", "xgboost", "class","shinny"))
    ```
 3. Open the `.Rmd` file in RStudio and run the analysis.
 
@@ -82,7 +83,7 @@ Ensure the following R packages are installed:
 ## References
 - Dataset: [PPI Data CSV](https://storage.dosm.gov.my/ppi/ppi.csv)
 - CRISP-DM Framework: [CRISP-DM Overview](https://www.crisp-dm.org/)
-- R-Pubs: [Agriculture-Sector-Analysis](http://rpubs.com/Lorraine06/Agriculture-Sector-Analysis)
+- Shinnys: [Dynamic Prediction of Agrivulture PPI](https://qk8k0u-lorraine-wong.shinyapps.io/Agriculture_Sector_Analysis/)
 
 ---
 
