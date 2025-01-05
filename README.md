@@ -82,6 +82,7 @@ Ensure the following R packages are installed:
 ---
 
 ## Deployment
+- RPubs: [R Markdown](https://rpubs.com/Lorraine06/Agriculture-Sector-Analysis)
 - Shinny App: [Dynamic Prediction of Agrivulture PPI](https://qk8k0u-lorraine-wong.shinyapps.io/Agriculture_Sector_Analysis/)
 - Poster: [Infographic Poster](https://www.canva.com/design/DAGa3ti-8YM/SGL8o9AWkLplmzttfp9JgQ/view?utm_content=DAGa3ti-8YM&utm_campaign=share_your_design&utm_medium=link&utm_source=shareyourdesignpanel)
 
