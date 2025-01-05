@@ -32,6 +32,7 @@ This project adopts the CRISP-DM methodology:
 - `Agriculture Sector Analysis using CRISP-DM Framework.Rmd`: R Markdown file containing the full analysis and implementation.
 - `ppi.csv`: Sample dataset used for analysis.
 - `README.md`: Overview of the project.
+- `Agriculture_Sector_Analysis.zip`: Shinny app.
 
 ---
 
